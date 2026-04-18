@@ -1,12 +1,17 @@
 from flask import Blueprint, request, jsonify
 from flasgger import swag_from
+from flask_jwt_extended import jwt_required
 from services.StudentService import StudentService
 
 student_bp = Blueprint('student', __name__)
 
+# ==================== ENDPOINTS QUE REQUIEREN TOKEN ====================
+
 @student_bp.route('/students', methods=['POST'])
+@jwt_required()
 @swag_from({
     'tags': ['Students'],
+    'security': [{"BearerAuth": []}],
     'parameters': [
         {
             'name': 'body',
@@ -26,7 +31,8 @@ student_bp = Blueprint('student', __name__)
     ],
     'responses': {
         201: {'description': 'Student created successfully'},
-        400: {'description': 'Invalid data'}
+        400: {'description': 'Invalid data'},
+        401: {'description': 'Unauthorized - Token required'}
     }
 })
 def create_student():
@@ -44,6 +50,70 @@ def create_student():
         return jsonify({'message': str(e)}), 400
     except Exception as e:
         return jsonify({'message': str(e)}), 500
+
+@student_bp.route('/students/<int:id>', methods=['PUT'])
+@jwt_required()
+@swag_from({
+    'tags': ['Students'],
+    'security': [{"BearerAuth": []}],
+    'parameters': [
+        {'name': 'id', 'in': 'path', 'type': 'integer', 'required': True},
+        {
+            'name': 'body',
+            'in': 'body',
+            'schema': {
+                'type': 'object',
+                'properties': {
+                    'first_name': {'type': 'string'},
+                    'last_name': {'type': 'string'},
+                    'mother_last_name': {'type': 'string'},
+                    'enrollment': {'type': 'string'},
+                    'email': {'type': 'string'}
+                }
+            }
+        }
+    ],
+    'responses': {
+        200: {'description': 'Student updated'},
+        404: {'description': 'Student not found'},
+        400: {'description': 'Invalid data'},
+        401: {'description': 'Unauthorized - Token required'}
+    }
+})
+def update_student(id):
+    try:
+        data = request.get_json()
+        student = StudentService.update_student(id, **data)
+        return jsonify(student.to_dict()), 200
+    except ValueError as e:
+        return jsonify({'message': str(e)}), 404 if 'not found' in str(e) else 400
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+@student_bp.route('/students/<int:id>', methods=['DELETE'])
+@jwt_required()
+@swag_from({
+    'tags': ['Students'],
+    'security': [{"BearerAuth": []}],
+    'parameters': [
+        {'name': 'id', 'in': 'path', 'type': 'integer', 'required': True}
+    ],
+    'responses': {
+        200: {'description': 'Student deleted'},
+        404: {'description': 'Student not found'},
+        401: {'description': 'Unauthorized - Token required'}
+    }
+})
+def delete_student(id):
+    try:
+        StudentService.delete_student(id)
+        return jsonify({'message': 'Student deleted successfully'}), 200
+    except ValueError as e:
+        return jsonify({'message': str(e)}), 404
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+# ==================== ENDPOINTS PÚBLICOS ====================
 
 @student_bp.route('/students', methods=['GET'])
 @swag_from({
@@ -74,62 +144,6 @@ def get_student_by_id(id):
     try:
         student = StudentService.get_student_by_id(id)
         return jsonify(student.to_dict()), 200
-    except ValueError as e:
-        return jsonify({'message': str(e)}), 404
-    except Exception as e:
-        return jsonify({'message': str(e)}), 500
-
-@student_bp.route('/students/<int:id>', methods=['PUT'])
-@swag_from({
-    'tags': ['Students'],
-    'parameters': [
-        {'name': 'id', 'in': 'path', 'type': 'integer', 'required': True},
-        {
-            'name': 'body',
-            'in': 'body',
-            'schema': {
-                'type': 'object',
-                'properties': {
-                    'first_name': {'type': 'string'},
-                    'last_name': {'type': 'string'},
-                    'mother_last_name': {'type': 'string'},
-                    'enrollment': {'type': 'string'},
-                    'email': {'type': 'string'}
-                }
-            }
-        }
-    ],
-    'responses': {
-        200: {'description': 'Student updated'},
-        404: {'description': 'Student not found'},
-        400: {'description': 'Invalid data'}
-    }
-})
-def update_student(id):
-    try:
-        data = request.get_json()
-        student = StudentService.update_student(id, **data)
-        return jsonify(student.to_dict()), 200
-    except ValueError as e:
-        return jsonify({'message': str(e)}), 404 if 'not found' in str(e) else 400
-    except Exception as e:
-        return jsonify({'message': str(e)}), 500
-
-@student_bp.route('/students/<int:id>', methods=['DELETE'])
-@swag_from({
-    'tags': ['Students'],
-    'parameters': [
-        {'name': 'id', 'in': 'path', 'type': 'integer', 'required': True}
-    ],
-    'responses': {
-        200: {'description': 'Student deleted'},
-        404: {'description': 'Student not found'}
-    }
-})
-def delete_student(id):
-    try:
-        StudentService.delete_student(id)
-        return jsonify({'message': 'Student deleted successfully'}), 200
     except ValueError as e:
         return jsonify({'message': str(e)}), 404
     except Exception as e:
