@@ -1,0 +1,18 @@
+stages:
+  - test
+
+variables:
+  DATABASE_URL: "sqlite:///test.db"
+
+before_script:
+  - pip install -r requirements.txt
+
+test:
+  stage: test
+  script:
+    - echo "Ejecutando pruebas..."
+    - python -c "from app import create_app; app = create_app(); assert app is not None"
+    - echo "Pruebas pasadas exitosamente"
+  only:
+    - develop
+    - main
